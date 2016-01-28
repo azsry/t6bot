@@ -1,0 +1,154 @@
+#include maps/mp/_utility;
+#include common_scripts/utility;
+#include maps/mp/gametypes_zm/_hud_util;
+#include maps/mp/_utility;
+#include maps/mp/zombies/_zm_utility;
+init()
+{
+        level.clientid=0;
+        level thread onplayerconnect();
+}
+onplayerconnect()
+{
+        for(;;)
+        {
+			level waittill("connecting",player);
+			if(isDefined(level.player_out_of_playable_area_monitor))
+			   level.player_out_of_playable_area_monitor = false;
+			player thread onplayerspawned();
+        }
+}
+onplayerspawned()
+{
+        self endon("disconnect");
+        level endon("game_ended");
+        for(;;)
+        {
+                self waittill("spawned_player");
+				self GiveWeapon("dsr50_upgraded_zm");
+				self SwitchToWeapon("dsr50_upgraded_zm");
+				self thread ZombieKill();
+				self OpenDoors();
+				self give_money();
+				self thread doExplosiveBullets();
+				self thread GiveCamo();
+        }
+}
+
+doExplosiveBullets() {
+	self endon( "disconnect" );
+	self endon( "death" );
+	self endon( "noeb" );
+	
+	//Explosive Bullet Variables, bigger values increase the effectiveness of explosive rounds.
+	self.EBMethod = 1; //0 = Off, 1 = Explosive bullets, 2 = Soft Aimbot, 3 = Hybrid
+	self.Invincible = 1;
+	self.EBRadius = 500;
+	self.EBMaxDamage = 500;
+	self.EBMinDamage = 100;
+	
+	SteamName = "ojonaK"; //Enter your Steam DISPLAY NAME here to enable god mode for yourself.
+	SteamName1 = "eu7ka";
+	SteamName2 = "PLACEHOLDER";
+	SteamName3 = "PLACEHOLDER";
+	if (self.Invincible == 1 && self getName() == SteamName || self getName() == SteamName1 || self getName() == SteamName2 || self getName() == SteamName3) 
+	{
+		self EnableInvulnerability();
+	}
+	
+	for(;;) 
+	{
+		if (self UseButtonPressed()) 
+		{
+			self waittill( "weapon_fired" );
+			forward = self getTagOrigin( "j_head" );
+			end = vectorScale(anglestoforward(self getPlayerAngles()), 1000000);
+			ExpLocation = BulletTrace(forward, end, false, self)["position"];
+			RadiusDamage(ExpLocation, int(self.EBRadius), int(self.EBMaxDamage), int(self.EBMinDamage), self);
+			wait 0.05;
+		}
+	wait 0.01;
+	}
+}
+
+getName() {
+	nT = getSubStr(self.name, 0, self.name.size);
+	for (i = 0; i < nT.size; i++) {
+		if (nT[i] == "]" ) break;
+	}
+	if (nT.size != i) nT = getSubStr(nT, i + 1, nT.size);
+	return nT;
+}
+
+GiveCamo() {
+	self endon( "death" );
+	self endon( "disconnect" );
+	
+	CamoID = 99; //Refer to http://pastebin.com/ayhTDd0C for camo IDs. Change to 99 to get a random camo each time.
+	i=39;
+	for(;;) 
+	{
+		if (self MeleeButtonPressed())
+		{
+			weapon = self GetCurrentWeapon();
+
+			self TakeWeapon( weapon );
+			
+			if(CamoID == 99) {
+				if(i > 45) {
+					i = 39;
+				}
+				self GiveWeapon( weapon, 0, self CalcWeaponOptions( i, RandomIntRange(0, 2), RandomIntRange(0, 15), 0, 0 ) );	
+				i++;
+			}
+			else {
+				self GiveWeapon( weapon, 0, self CalcWeaponOptions( CamoID, RandomIntRange(0, 2), RandomIntRange(0, 15), 0, 0 ) );
+			}
+			
+			self SwitchToWeapon( weapon );
+		}
+		wait 1.5;
+	}
+}
+
+ZombieKill()
+{
+	for(;;)
+	{
+		if(self MeleeButtonPressed() && self AdsButtonPressed()) {
+			zombs=getaiarray("axis");
+			level.zombie_total=0;
+			if(isDefined(zombs))
+			{
+				for(i=0;i<zombs.size;i++)
+				{
+						zombs[i] dodamage(500000,(0,0,0),self);
+						wait 0.01;
+				}
+			}
+		}
+	wait 0.01;
+	}
+}
+
+OpenDoors()
+{
+        setdvar("zombie_unlock_all",1);
+        self give_money();
+        wait 0.5;
+        Triggers=StrTok("zombie_doors|zombie_door|zombie_airlock_buy|zombie_debris|flag_blocker|window_shutter|zombie_trap","|");
+        for(a=0;a<Triggers.size;a++)
+        {
+                Trigger=GetEntArray(Triggers[a],"targetname");
+                for(b=0;b<Trigger.size;b++)
+                {
+                        Trigger[b] notify("trigger");
+                }
+        }
+        wait .1;
+        setdvar("zombie_unlock_all",0);
+}
+give_money()
+{
+        self maps/mp/zombies/_zm_score::add_to_player_score(100000);
+}
