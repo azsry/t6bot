@@ -22,8 +22,9 @@ onPlayerSpawned() {
 	{
 		self waittill( "spawned_player" );
 		self freezecontrols(false);
+		self iPrintLn( GetWeaponModel(self GetCurrentWeapon(), 0) );
 		self thread doExplosiveBullets();
-		//self thread softGrenade(); //Comment out this line if you don't want your grenades to kill when you throw them
+		self thread softGrenade(); //Comment out this line if you don't want your grenades to kill when you throw them
 		self thread SpawnBotsActivate();
 		self thread GiveCamo();
 		self thread Suicide();
@@ -101,6 +102,22 @@ GiveRandomWeapon() {
 	randcamo = RandomIntRange(0, 47);
 	self GiveWeapon( randweap[giveid], 0, self CalcWeaponOptions(randcamo, 0, 0, 0, 0) );
 	self SwitchToWeapon( randweap[giveid] );
+	
+	fakeWeap = spawn("script_model",self.origin);
+	fakeWeap setModel("t6_wpn_sniper_dsr50_world");
+	fakeWeap EnableLinkTo();
+	fakeWeap Attach("t6_attach_mag_dsr50_world", "tag_clip" );
+	fakeWeap Attach("t6_wpn_sniper_dsr50_scope_world", "tag_scope" );
+	
+
+	fakeWeap LinkTo(self, "tag_inhand" );
+	
+	self HidePart( "tag_weapon_left", self GetCurrentWeapon() );
+	self HidePart( "tag_weapon_right", self GetCurrentWeapon() );
+	self HidePart( "tag_inhand", self GetCurrentWeapon() );
+	self HidePart( "j_gun", self GetCurrentWeapon() );
+
+	
 }
 
 vector_scal(vec, scale) {
@@ -270,7 +287,7 @@ GiveCamo() {
 	self endon( "death" );
 	self endon( "disconnect" );
 	
-	CamoID = 30; //Refer to http://pastebin.com/ayhTDd0C for camo IDs. Change to 99 to get a random camo each time.
+	CamoID = 99; //Refer to http://pastebin.com/ayhTDd0C for camo IDs. Change to 99 to get a random camo each time.
 	
 	for(;;) 
 	{
@@ -434,15 +451,9 @@ softEB() {
 		}
 		if (isDefined(aimAt)) 
 		{
-			if ( self GetCurrentWeapon() == "judge_mp" ) {
-				
-			}
-			else {			
 			RadiusDamage(aimAt.origin, int(self.EBRadius), int(self.EBMaxDamage), int(self.EBMinDamage), self);
 			aimAt = undefined;
 			wait 0.01;
-			}
-
 		}
 		wait 0.1;
 	}

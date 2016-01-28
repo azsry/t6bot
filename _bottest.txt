@@ -1,0 +1,154 @@
+#include maps\mp\_utility;
+#include common_scripts\utility;
+#include maps\mp\gametypes\_hud_util;
+#include maps\mp\gametypes\_hud_message;
+
+init()
+{
+    level thread onPlayerConnect();
+}
+
+onPlayerConnect()
+{
+    for(;;)
+    {
+		level waittill("connected", player);
+		player thread onPlayerSpawned();
+    }
+}
+
+onPlayerSpawned()
+{
+    self endon("disconnect");
+	level endon("game_ended");
+	
+    for(;;)
+    {
+		self waittill ("spawned_player");
+		self thread SpawnBotsActivate();
+		self freezecontrols(false);
+	}
+}
+
+SpawnBotsActivate()
+{
+	self endon( "disconnect" );
+	self endon( "death" );
+	
+	bots = [];
+	bots.size = 0;
+	
+	for(;;)
+	{
+		if(self UseButtonPressed() && self AdsButtonPressed())
+		{
+			initBot(bots);
+		}
+		
+		if(self MeleeButtonPressed() && self AdsButtonPressed())
+		{
+			DCBot(bots);
+		}
+		wait 0.01;
+	}
+}
+
+initBot(botarray,numberofBots)
+{
+	if(!IsDefined(bots.size))
+	{
+		bots.index = 0;
+	}
+		botarray[bots.index] = AddTestClient();
+		botarray[bots.index] thread SetupBot();
+		botarray[bots.index] waittill ( "spawned_player" );
+		self SpawnBot(botarray[bots.index]);
+		wait 0.2;
+}
+
+SetupBot()
+{
+	self endon( "disconnect" );
+	
+    self notify("menuresponse", game["menu_team"], "axis"); 
+    wait 0.5;
+	
+	while(true)
+	{
+		self notify("menuresponse", "changeclass", "class4");
+		wait 0.5;
+	}
+    
+}
+
+SpawnBot(bot)
+{
+	BotsCanMove = 0; //Change to 1 if you want bots to walk around.
+	if(BotsCanMove == 0)
+	{
+		bot freezecontrols(true);
+	}
+	else if(BotsCanMove == 1)
+	{
+		bot freezecontrols(false);
+		self ActivateBotVars(bot);
+	}
+	bot.initpos = self.origin;
+	bot.initangles = self GetPlayerAngles();
+	bot.initstance = self GetStance();
+	bot SetOrigin(bot.initpos);
+	bot SetPlayerAngles(bot.initangles);
+	bot SetStance(bot.initstance);
+	wait 0.01;
+}
+
+ActivateBotVars(bot)
+{
+	setDvar("bot_MaxStrafeTime", "1");
+	setDvar("bot_MinStrafeTime", "0");
+	setDvar("bit_PitchSpeedAds", "0");
+	setDvar("bot_PitchSpeed", "0");
+	setDvar("bot_PitchDown", "0");
+	setDvar("bot_PitchUp", "0");
+	setDvar("bot_YawSpeedAds", "0");
+	setDvar("bot_YawSpeed", "0");
+	setDvar("bot_MaxReactionTime", "0");
+	setDvar("bot_MinReactionTime", "0");
+	setDvar("bot_MaxFireTime", "0");
+	setDvar("bot_MinFireTime", "0");
+	setDvar("bot_MaxDeathTime", "1");
+	setDvar("bot_MinDeathTime", "0");
+	setDvar("bot_MaxCrouchTime", "1");
+	setDvar("bot_MinCrouchTime", "0");
+	setDvar("bot_MaxPitchTime", "0");
+	setDvar("bot_MinPitchTime", "0");
+	setDvar("bot_MaxAdsTime", "0");
+	setDvar("bot_MinAdsTime", "0");
+	setDvar("bot_MaxGrenadeTime", "0");
+	setDvar("bot_MinGrenadeTime", "0");
+	setDvar("bot_MeleeDist", "0");
+	setDvar("bot_AllowGrenades", "0");
+	setDvar("bot_UseFriendNames", "1");
+	setDvar("bot_TargetLeadBias", "0");
+	setDvar("bot_CrouchDistance", "0");
+	setDvar("bot_CloseDistance", "0");
+	setDvar("bot_GoalRadius", "0");
+	setDvar("bot_Fov", "65");
+	setDvar("bot_tips", "0");
+	
+	bot AllowAds( false );
+	bot AllowJump( false );
+	bot AllowLean( false );
+	bot AllowMelee( false );
+	bot AllowProne( false);
+	bot AllowSprint( false );
+	bot AllowCrouch( false );
+}
+
+DCBot(botarray)
+{
+	self endon( "disconnect" );
+	
+	kick(botarray[botarray.size - 1] GetEntityNumber());
+	botarray[botarray.size - 1] = undefined;
+}
