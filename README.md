@@ -15,7 +15,7 @@ Most of the code is what I have learnt over the past few months through reading 
 * **Use and ADS simultaneously** spawns a bot. They will spawn where you are standing and will not move unless told to in the code. Bots spawn with various weapons defined in a list with attachments and a random camo.
 * **Hold Melee for ~0.5 seconds** gives yourself a weapon with any camo. Camo is defined in the code.
 * **Hold Space** allows you to pick up bots once you have placed them.
-* **Press 6** to suicide. Useful for returning to the map if you have fallen out of bounds or wish to change class.
+* **Press 7** to suicide. Useful for returning to the map if you have fallen out of bounds or wish to change class.
 
 ###FAQs:
 * My game freezes upon injecting the mod. This happens sometimes for unknown reasons. Either restart the game and inject the mod again, or set up the game how you want it and start it up to the point where you can run around, then back out and inject the mod.
