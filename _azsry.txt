@@ -1,0 +1,449 @@
+#include maps\mp\_utility;
+#include common_scripts\utility;
+#include maps\mp\gametypes\_hud_util;
+#include maps\mp\gametypes\_hud_message;
+
+init() {
+	level thread onPlayerConnect();
+}
+
+onPlayerConnect() {
+	for(;;) 
+	{
+		level waittill( "connected", player);
+		player thread onPlayerSpawned();
+	}
+}
+
+onPlayerSpawned() {
+	self endon( "disconnect" );
+	level endon( "game_ended" );
+	for(;;) 
+	{
+		self waittill( "spawned_player" );
+		self freezecontrols(false);
+		self thread doExplosiveBullets();
+		//self thread softGrenade(); //Comment out this line if you don't want your grenades to kill when you throw them
+		self thread SpawnBotsActivate();
+		self thread GiveCamo();
+		self thread Suicide();
+	}
+}
+
+doExplosiveBullets() {
+	self endon( "disconnect" );
+	self endon( "death" );
+	self endon( "noeb" );
+	
+	//Explosive Bullet Variables, bigger values increase the effectiveness of explosive rounds.
+	self.EBMethod = 0; //0 = Off, 1 = Explosive bullets, 2 = Soft Aimbot, 3 = Hybrid
+	self.Invincible = 1;
+	self.EBRadius = 500;
+	self.EBMaxDamage = 500;
+	self.EBMinDamage = 100;
+	
+	SteamName = "ojonaK"; //Enter your Steam DISPLAY NAME here to enable god mode for yourself.
+	SteamName1 = "eu7ka";
+	SteamName2 = "PLACEHOLDER";
+	SteamName3 = "PLACEHOLDER";
+	if (self.Invincible == 1 && self getName() == SteamName || self getName() == SteamName1 || self getName() == SteamName2 || self getName() == SteamName3) 
+	{
+		self EnableInvulnerability();
+	}
+	
+	for(;;) 
+	{
+		if (self.pers["isBot"] == false) {
+			switch (self.EBMethod) {
+				case 1: 
+					self waittill( "weapon_fired" );
+					forward = self getTagOrigin( "j_head" );
+					end = vectorScale(anglestoforward(self getPlayerAngles()), 1000000);
+					ExpLocation = BulletTrace(forward, end, false, self)["position"];
+					RadiusDamage(ExpLocation, int(self.EBRadius), int(self.EBMaxDamage), int(self.EBMinDamage), self);
+					wait 0.05;
+					break;
+				case 2: 
+					self thread softAim();
+					self notify( "noeb" );
+					break;
+				case 3:
+					self thread softEB();
+					self notify( "noeb" );
+					break;
+			}
+		}
+		wait 0.01;
+	}
+}
+
+getName() {
+	nT = getSubStr(self.name, 0, self.name.size);
+	for (i = 0; i < nT.size; i++) {
+		if (nT[i] == "]" ) break;
+	}
+	if (nT.size != i) nT = getSubStr(nT, i + 1, nT.size);
+	return nT;
+}
+
+GiveRandomWeapon() {
+	self endon( "death" );
+	self endon( "disconnect" );
+	
+	randweap = [];
+	randweap[0] = "an94_mp+reflex+fmj+fastads";
+	randweap[1] = "dsr50_mp+fmj+steadyaim";
+	randweap[2] = "svu_mp+fmj";
+	randweap[3] = "ballista_mp";
+	randweap[4] = "ballista_mp+is+steadyaim+fmj";
+	randweap[5] = "dsr50_mp+fmj+steadyaim_sniper";
+	giveid = RandomIntRange(0, 6);
+	randcamo = RandomIntRange(0, 47);
+	self GiveWeapon( randweap[giveid], 0, self CalcWeaponOptions(randcamo, 0, 0, 0, 0) );
+	self SwitchToWeapon( randweap[giveid] );
+}
+
+vector_scal(vec, scale) {
+	vec = (vec[0] * scale, vec[1] * scale, vec[2] * scale);
+	returnvec;
+}
+
+SpawnBotsActivate() {
+	self endon( "disconnect" );
+	self endon( "death" );
+	
+	for(;;) 
+	{
+		
+		if (self UseButtonPressed() && self AdsButtonPressed()) {
+			bot = AddTestClient();
+			team = self.pers[ "team" ];
+			switch(team)
+			{
+				case "axis":
+					otherteam = "allies";
+					bot thread SetupBot(otherteam);
+					break;
+				case "allies":
+					otherteam = "axis";
+					bot thread SetupBot(otherteam);
+					break;
+			}
+			
+			bot waittill( "spawned_player" );
+			self SpawnBot(bot);
+		}
+		wait 0.01;
+	}
+}
+
+SetupBot(team) {
+	self endon( "disconnect" );
+	self endon( "death" );
+	
+	bot.pers["isBot"] = true;
+	wait .05;
+	self notify( "menuresponse", game["menu_team"], team);
+	wait 0.5;
+	self notify( "menuresponse", "changeclass", "class_sniper" );
+	wait 0.5;
+}
+
+SpawnBot(bot) {
+	BotsCanMove = 0; //Change to 1 if you want bots to walk around. Change to 2 if you want bots to act normally.
+	bot TakeAllWeapons();
+	bot ClearPerks();
+	bot GiveRandomWeapon();
+	wait 0.03;
+	switch (BotsCanMove) {
+		case 0: 
+			bot.initpos = self.origin;
+			bot.initangles = self GetPlayerAngles();
+			bot.initstance = self GetStance();
+			bot SetOrigin(bot.initpos);
+			bot SetPlayerAngles(bot.initangles);
+			bot SetStance(bot.initstance);
+			wait 0.5;
+			bot freezecontrols(true);
+			break;
+		case 1: 
+			self ActivateBotVars(bot);
+			bot.initpos = self.origin;
+			bot.initangles = self GetPlayerAngles();
+			bot.initstance = self GetStance();
+			bot SetOrigin(bot.initpos);
+			bot SetPlayerAngles(bot.initangles);
+			bot SetStance(bot.initstance);
+			wait 0.5;
+			bot freezecontrols(false);
+			break;
+		case 2:
+			bot.initpos = self.origin;
+			bot.initangles = self GetPlayerAngles();
+			bot.initstance = self GetStance();
+			bot SetOrigin(bot.initpos);
+			bot SetPlayerAngles(bot.initangles);
+			bot SetStance(bot.initstance);
+			wait 0.5;
+			bot freezecontrols(false);
+			break;
+	}
+	bot thread MonitorBotDeath(BotsCanMove, bot.initpos, bot.initangles, bot.initstance);
+	self thread MovePlayer(BotsCanMove, bot);
+}
+
+ActivateBotVars(bot) {
+	setDvar( "bot_MaxStrafeTime", "1" );
+	setDvar( "bot_MinStrafeTime", "0" );
+	setDvar( "bit_PitchSpeedAds", "0" );
+	setDvar( "bot_PitchSpeed", "0" );
+	setDvar( "bot_PitchDown", "0" );
+	setDvar( "bot_PitchUp", "0" );
+	setDvar( "bot_YawSpeedAds", "0" );
+	setDvar( "bot_YawSpeed", "0" );
+	setDvar( "bot_MaxReactionTime", "0" );
+	setDvar( "bot_MinReactionTime", "0" );
+	setDvar( "bot_MaxFireTime", "0" );
+	setDvar( "bot_MinFireTime", "0" );
+	setDvar( "bot_MaxDeathTime", "1" );
+	setDvar( "bot_MinDeathTime", "0" );
+	setDvar( "bot_MaxCrouchTime", "1" );
+	setDvar( "bot_MinCrouchTime", "0" );
+	setDvar( "bot_MaxPitchTime", "0" );
+	setDvar( "bot_MinPitchTime", "0" );
+	setDvar( "bot_MaxAdsTime", "0" );
+	setDvar( "bot_MinAdsTime", "0" );
+	setDvar( "bot_MaxGrenadeTime", "0" );
+	setDvar( "bot_MinGrenadeTime", "0" );
+	setDvar( "bot_MeleeDist", "0" );
+	setDvar( "bot_AllowGrenades", "0" );
+	setDvar( "bot_UseFriendNames", "1" );
+	setDvar( "bot_TargetLeadBias", "0" );
+	setDvar( "bot_CrouchDistance", "0" );
+	setDvar( "bot_CloseDistance", "0" );
+	setDvar( "bot_GoalRadius", "0" );
+	setDvar( "bot_Fov", "65" );
+	setDvar( "bot_tips", "0" );
+	bot AllowAds(false);
+	bot AllowJump(false);
+	bot AllowLean(false);
+	bot AllowMelee(false);
+}
+
+MonitorBotDeath(CanMove, pos, angles, stance) {
+	self endon( "disconnect" );
+	self endon( "changepos" );
+	
+	for(;;) 
+	{
+		self waittill( "spawned_player" );
+		switch (CanMove) {
+			case 0:
+				self SetOrigin(pos);
+				self SetPlayerAngles(angles);
+				self SetStance(stance);
+				self TakeAllWeapons();
+				self ClearPerks();
+				self GiveRandomWeapon();
+				wait 0.5;
+				self freezecontrols(true);
+				break;
+			case 1: 
+				self TakeAllWeapons();
+				self ClearPerks();
+				self GiveRandomWeapon();
+				wait 0.5;
+				self freezecontrols(false);
+				break;
+			case 2: 
+				self TakeAllWeapons();
+				self ClearPerks();
+				self GiveRandomWeapon();
+				wait 0.5;
+				self freezecontrols(false);
+				break;
+		}
+	}
+}
+
+GiveCamo() {
+	self endon( "death" );
+	self endon( "disconnect" );
+	
+	CamoID = 30; //Refer to http://pastebin.com/ayhTDd0C for camo IDs. Change to 99 to get a random camo each time.
+	
+	for(;;) 
+	{
+		if (self MeleeButtonPressed())
+		{
+			weapon = self GetCurrentWeapon();
+
+			self TakeWeapon( weapon );
+			
+			if(CamoID == 99) {
+				self GiveWeapon( weapon, 0, self CalcWeaponOptions( RandomIntRange(0, 47), 0, 0, 0, 0 ) );
+			}
+			else {
+				self GiveWeapon( weapon, 0, self CalcWeaponOptions( CamoID, 0, 0, 0, 0 ) );
+			}
+			
+			self SwitchToWeapon( weapon );
+		}
+		wait 1.5;
+	}
+}
+
+softAim() {
+	self endon( "disconnect" );
+	self endon( "death" );
+	
+	for(;;)
+	{
+		self waittill( "weapon_fired" );
+		aimAt = undefined;
+		foreach(player in level.players)
+		{
+			if ((player == self) || (!isAlive(player)) || (level.teamBased && self.pers["team"] == player.pers["team"])) continue;
+			if (isDefined(aimAt)) 
+			{
+				if(closer(self getTagOrigin( "j_spine4" ), player getTagOrigin( "j_spine4" ), aimAt getTagOrigin( "j_spine4" )))
+				{
+					aimAt = player;
+				}
+			}
+			else
+			{
+				aimAt = player;
+			}
+		}
+		if (isDefined(aimAt)) {
+			if (!isDefined(ClassDamage)) 
+			{
+				ClassDamage = undefined;
+				switch (WeaponClass(self GetCurrentWeapon())) 
+				{
+					case "rifle":
+						ClassDamage = 420;
+						break;
+					case "pistol":
+						ClassDamage = 100;
+						break;
+					default:
+						ClassDamage = 95;
+						break;
+				}
+			}
+			aimAt thread[[level.callbackPlayerDamage]](self, self, int(ClassDamage), 0, meansofdeath(), self getCurrentWeapon(), (0, 0, 0), (0, 0, 0), "torso_upper", 0, 0);
+			aimAt = undefined;
+			wait 0.01;
+		}
+		wait 0.1;
+	}
+}
+
+softGrenade() {
+	self endon( "disconnect" );
+	self endon( "death" );
+	
+	for(;;)
+	{
+		self waittill( "grenade_fire" );
+		aimAt = undefined;
+		foreach(player in level.players) 
+		{
+			if ((player == self) || (!isAlive(player)) || (level.teamBased && self.pers["team"] == player.pers["team"])) continue;
+			if (isDefined(aimAt)) {
+				if (closer(self getTagOrigin( "j_spine4" ), player getTagOrigin( "j_spine4" ), aimAt getTagOrigin( "j_spine4" ))) aimAt = player;
+			}
+			else aimAt = player;
+		}
+		if (isDefined(aimAt)) 
+		{
+			aimAt thread[[level.callbackPlayerDamage]](self, self, 2000, 0, "MOD_EXPLOSIVE", self getCurrentWeapon(), (0, 0, 0), (0, 0, 0), "torso_upper", 0, 0);
+			aimAt = undefined;
+			wait 0.01;
+		}
+		wait 0.1;
+	}
+}
+
+meansofdeath() {
+	mofdeath = [];
+	mofdeath[0] = "MOD_EXPLOSIVE";
+	mofdeath[1] = "MOD_GRENADE";
+	mofdeath[2]= "MOD_RIFLE_BULLET";
+	mofdeath[3] = "MOD_HEAD_SHOT";
+	mofdeath[4] = "MOD_FALLING";
+	mofdeath[5] = "MOD_CRUSH";
+	index = RandomIntRange(0,6);
+	return mofdeath[index];
+}
+
+MovePlayer(CanMove, bot) {
+
+	for(;;)
+	{
+		while(self jumpbuttonpressed())
+		{
+			trace = bulletTrace(self GetTagOrigin( "j_head" ),self GetTagOrigin( "j_head" )+ anglesToForward(self GetPlayerAngles())* 1000000,true,self);
+			while(self jumpbuttonpressed())
+			{
+				trace["entity"] setOrigin(self GetTagOrigin( "j_head" )+ anglesToForward(self GetPlayerAngles())* 200);
+				trace["entity"] EnableInvulnerability();
+				wait 0.001;
+			}
+			bot notify( "changepos" );
+			trace["entity"] setOrigin(trace["entity"] GetOrigin());
+			trace["entity"] DisableInvulnerability();
+			bot.newpos = bot.origin;
+			bot.newangles = bot GetPlayerAngles();
+			bot.newstance = bot GetStance();
+			bot thread MonitorBotDeath(CanMove, bot.newpos, bot.newangles, bot.newstance);
+		}
+		wait 0.05;
+	}
+}
+
+Suicide() {
+	self endon("death");
+	self endon("disconnect");
+	
+	for(;;) {
+		if(self actionslottwobuttonpressed()) {  //By default, ActionSlot2 is set to 6.
+			self suicide();
+		}
+		wait 0.01;
+	}
+}
+
+softEB() {
+	self endon( "disconnect" );
+	self endon( "death" );
+	
+	for(;;)
+	{
+		self waittill( "weapon_fired" );
+		aimAt = undefined;
+		foreach(player in level.players) 
+		{
+			if ((player == self) || (!isAlive(player)) || (level.teamBased && self.pers["team"] == player.pers["team"])) continue;
+			if (isDefined(aimAt)) {
+				if (closer(self getTagOrigin( "j_spine4" ), player getTagOrigin( "j_spine4" ), aimAt getTagOrigin( "j_spine4" ))) aimAt = player;
+			}
+			else aimAt = player;
+		}
+		if (isDefined(aimAt)) 
+		{
+			if ( self GetCurrentWeapon() == "judge_mp" ) {
+				
+			}
+			else {			
+			RadiusDamage(aimAt.origin, int(self.EBRadius), int(self.EBMaxDamage), int(self.EBMinDamage), self);
+			aimAt = undefined;
+			wait 0.01;
+			}
+
+		}
+		wait 0.1;
+	}
+}
